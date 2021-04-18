@@ -36,7 +36,8 @@ export default function TabOneScreen(props) {
   });
 
   if (!data || !data.bitcoin || error) {
-    console.log("no bitcoin data!!", error);
+    console.log(error);
+    console.log("wheres navi", navigation);
     return <ActivityIndicator style={{ ...StyleSheet.absoluteFillObject }} />;
   }
 

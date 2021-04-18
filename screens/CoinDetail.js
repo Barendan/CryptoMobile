@@ -6,12 +6,63 @@ import {
   TouchableOpacity,
   View,
   ScrollView,
+  FlatList,
 } from "react-native";
+import RoundedButton from "../components/RoundedButton";
+import Coin from "../components/Coin";
+import { useQuery, useMutation } from "@apollo/react-hooks";
+import gql from "graphql-tag";
+
+const FETCH_FAVORITES = gql`
+  query {
+    favorites {
+      name
+      price
+      symbol
+      imageUrl
+      favorite
+    }
+  }
+`;
+
+const ADD_COIN = gql`
+  mutation AddCoin($symbol: String!) {
+    addCoin(symbol: $symbol) {
+      name
+      symbol
+      price
+      imageUrl
+      favorite
+    }
+  }
+`;
+
+const REMOVE_COIN = gql`
+  mutation RemoveCoin($symbol: String!) {
+    removeCoin(symbol: $symbol) {
+      name
+      symbol
+      price
+      imageUrl
+      favorite
+    }
+  }
+`;
 
 export default function CoinDetail(props) {
+  const { data, refetch } = useQuery(FETCH_FAVORITES);
+  const [addCoin] = useMutation(ADD_COIN);
+  const [removeCoin] = useMutation(REMOVE_COIN);
+
+  const { navigation } = props;
   const { params } = props.route;
   const { coin } = params;
   const { symbol, name, price, imageUrl } = coin;
+
+  const isFavorite =
+    data &&
+    data.favorites &&
+    data.favorites.find((coin) => coin.symbol == symbol);
 
   return (
     <View style={styles.container}>
@@ -20,15 +71,46 @@ export default function CoinDetail(props) {
         <Text numberOfLines={1} style={styles.text}>
           {name} - {symbol}
         </Text>
+        <RoundedButton
+          backgroundColor="skyblue"
+          text={isFavorite ? `Remove ${name}` : `Save ${name}`}
+          onPress={() => {
+            if (isFavorite) {
+              removeCoin({
+                variables: { symbol: symbol },
+              })
+                .then(() => refetch())
+                .catch((err) => console.log("remove fav no worky", err));
+            } else {
+              addCoin({
+                variables: { symbol: symbol },
+              })
+                .then(() => refetch())
+                .catch((err) => console.log("add fav no worky", err));
+            }
+          }}
+        />
       </View>
 
+      <ScrollView>
+        <View style={styles.statRow}>
+          <Text style={styles.text}>Price</Text>
+          <Text style={styles.text}>{price}</Text>
+        </View>
+      </ScrollView>
       <View style={styles.statsContainer}>
-        <ScrollView>
-          <View style={styles.statRow}>
-            <Text style={styles.text}>Price</Text>
-            <Text style={styles.text}>{price}</Text>
-          </View>
-        </ScrollView>
+        {!!data && !!data.favorites && (
+          <FlatList
+            data={data.favorites}
+            keyExtractor={(item, index) => `${index}`}
+            renderItem={({ item, index }) => (
+              <Coin
+                coin={item}
+                onPress={() => navigation.navigate("Detail", { coin: item })}
+              />
+            )}
+          />
+        )}
       </View>
     </View>
   );
@@ -45,7 +127,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   text: {
-    fontSize: 32,
+    fontSize: 22,
     color: "#161616",
   },
   image: {
